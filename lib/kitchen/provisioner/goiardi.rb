@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 #
-# Author:: Fletcher Nichol (<fnichol@nichol.ca>)
+# Author:: Brad Beam (<brad.beam@b-rad.info>)
 #
-# Copyright (C) 2013, Fletcher Nichol
+# Copyright (C) 2013, Brad Beam
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ module Kitchen
 
     # Chef Goiardi provisioner.
     #
-    # @author Fletcher Nichol <fnichol@nichol.ca>
+    # @author Brad Beam <brad.beam@b-rad.info>
     class Goiardi < ChefBase
 
       default_config :client_rb, {}
@@ -42,17 +42,18 @@ module Kitchen
         data = default_config_rb
         #ruby_bin = config[:ruby_bindir]
         <<-PREPARE
-          sh -xc '
+          sh -c '
             if [ ! -f /tmp/goiardi ]; then
-              echo "Downloading goiardi"
-              wget https://github.com/bradbeam/goiardi/releases/download/v0.5.1/goiardi -O /tmp/goiardi
+              echo -n "Downloading goiardi..."
+              wget https://github.com/bradbeam/goiardi/releases/download/v0.5.1/goiardi -O /tmp/goiardi -o /tmp/goiardi_download.log
               chmod 755 /tmp/goiardi
+              echo "done!"
             fi
 
             if [ -z "$(ps --no-header -C goiardi )" ]; then
               echo -n "Starting goiardi server... "
               sudo nohup /tmp/goiardi -V -H localhost -P 4545 --conf-root=/tmp/kitchen >/tmp/goiardi.log 2>&1 &
-              #nohup /tmp/goiardi -V -H localhost -P 4545  &
+              echo "done!"
             fi
 
             if [ ! -f /tmp/kitchen/client.pem  ]; then
@@ -64,10 +65,7 @@ module Kitchen
             fi
 
             echo -n "Uploading cookbooks to goiardi..."
-            for cookbook in $(ls /tmp/kitchen/cookbooks); do
-              sudo knife cookbook upload -o /tmp/kitchen/cookbooks $cookbook -c /tmp/kitchen/client.rb
-              #>> /tmp/goiardi.log 2>&1
-            done
+              sudo knife cookbook upload -o /tmp/kitchen/cookbooks -a -c /tmp/kitchen/client.rb >> /tmp/goiardi.log 2>&1
             echo "done!"
             '
         PREPARE
@@ -108,19 +106,6 @@ module Kitchen
           file.write(format_config_file(data))
         end
       end
-
-      # def chef_client_zero_env(extra = nil)
-      #   args = [
-      #     %{CHEF_REPO_PATH="#{config[:root_path]}"},
-      #     %{GEM_HOME="#{config[:root_path]}/chef-client-zero-gems"},
-      #     %{GEM_PATH="#{config[:root_path]}/chef-client-zero-gems"},
-      #     %{GEM_CACHE="#{config[:root_path]}/chef-client-zero-gems/cache"}
-      #   ]
-      #   if extra == :export
-      #     args << %{; export CHEF_REPO_PATH GEM_HOME GEM_PATH GEM_CACHE;}
-      #   end
-      #   args.join(" ")
-      # end
 
       # Determines whether or not local mode (a.k.a chef zero mode) is
       # supported in the version of Chef as determined by inspecting the
